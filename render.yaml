@@ -2,16 +2,12 @@ services:
   - type: web
     name: callroom-personal-agent
     runtime: python
-    plan: starter
+    plan: free
     region: oregon
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn --worker-class gthread --workers 1 --threads 100 --timeout 60 app:app
     healthCheckPath: /api/health
     autoDeploy: true
-    disk:
-      name: callroom-sqlite
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: APP_ENV
         value: production
@@ -26,4 +22,4 @@ services:
       - key: GEMINI_MODEL
         value: gemini-1.5-pro
       - key: CALL_AGENT_DB_PATH
-        value: /var/data/call_agent.db
+        value: /tmp/call_agent.db

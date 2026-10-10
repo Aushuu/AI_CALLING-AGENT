@@ -51,13 +51,14 @@ Run the policy and persistence checks with `python -m unittest discover -s tests
 
 ## Render deployment
 
-The repository includes a Render Blueprint in `render.yaml` with a persistent disk, health check, production session secret, and generated dashboard password. Create a Blueprint from the repository, provide `GEMINI_API_KEY` when prompted, then copy the generated `DASHBOARD_PASSWORD` into the team secret manager.
+The repository includes a no-card Render Blueprint in `render.yaml` using the free web-service plan, a health check, generated production secrets, and ephemeral SQLite storage. Create a Blueprint from the repository and provide `GEMINI_API_KEY` when prompted. After deployment, copy the generated `DASHBOARD_PASSWORD` into the team secret manager.
 
-1. Push the repository to GitHub and create a Render **Web Service** from that repository.
-2. Select Python as the runtime, use `pip install -r requirements.txt` as the build command, and use `gunicorn --worker-class gthread --workers 1 --threads 100 app:app` as the start command. The threaded worker supports Flask-Sock WebSocket connections.
-3. Add `APP_ENV=production`, a strong `DASHBOARD_PASSWORD`, a long random `FLASK_SECRET_KEY`, and `GEMINI_API_KEY` as Render environment variables. Production startup fails closed when the password or unique secret key is missing. Set `GEMINI_MODEL` to a model enabled for your Google AI project; the default requested model is `gemini-1.5-pro`, with configured fallback model names in `ai_agent.py`.
-4. For persistent call history, attach a Render persistent disk and set `CALL_AGENT_DB_PATH` to a file on its mount, such as `/var/data/call_agent.db`. Without a persistent disk or external database, SQLite data on an ephemeral instance can be lost on redeploy/restart. Persistent disks may require a paid Render plan.
-5. Deploy and open the HTTPS service URL. Grant browser microphone access. Confirm `/api/logs` responds and verify a short test call appears in the registry.
+1. In Render, choose **New → Blueprint** and select this repository on `main`. The Blueprint defines the Python build/start commands, health check, free plan, and generated dashboard/session secrets.
+2. Enter `GEMINI_API_KEY` directly in Render when prompted. Never commit `.env` or put a key in source control. Production startup fails closed if the dashboard password or unique session secret is missing.
+3. Deploy and save the generated `DASHBOARD_PASSWORD` in your team secret manager. Open the HTTPS service URL, sign in, and grant microphone access.
+4. Test `/api/health`, then configure a schedule and sample caller rules. Run a short browser call and confirm it appears in the registry.
+
+The free web service has an ephemeral filesystem: its `/tmp/call_agent.db` can be lost on redeploy, restart, or when Render spins the service down after inactivity. Free services may take about a minute to wake after idle. This is appropriate for a temporary hackathon demo, not durable call history. Persistent storage requires a paid disk or changing the app to use a managed database.
 
 ## HTTP and WebSocket interface
 
@@ -82,6 +83,6 @@ The repository includes a Render Blueprint in `render.yaml` with a persistent di
 
 - Gemini model availability depends on the API project and can change over time. The server validates all model output and uses the offline fallback if credentials, provider access, or response validation fail.
 - The agent-active toggle is process-local. A single Render worker is configured for the prototype; multiple replicas require shared agent state and a shared production database.
-- Schedules and saved contacts are persistent, but they are consulted only when the simulator receives a caller ID. Automatically handling a real incoming cellular call needs a separate native Android app, user-granted call-screening role, device/OEM validation, and supported telephony behavior. The simulator cannot bridge a screened caller to the transfer `tel:` call.
+- Schedules and saved contacts are stored in SQLite and are consulted only when the simulator receives a caller ID; on Render's free ephemeral filesystem, they can be lost when the service restarts or spins down. Automatically handling a real incoming cellular call needs a separate native Android app, user-granted call-screening role, device/OEM validation, and supported telephony behavior. The simulator cannot bridge a screened caller to the transfer `tel:` call.
 - Model classifications and fallback keyword screening are recommendations, not verified identity or fraud determinations. The interface shows uncertainty and requires a deliberate user action for a transfer; do not use the prototype for emergency screening.
 - The dashboard password is a single shared owner credential, not individual user accounts. Use HTTPS, a strong password, and a unique secret key; there is no password reset or retention scheduler. Do not use the prototype for real personal calls.
