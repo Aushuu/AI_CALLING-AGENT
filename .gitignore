@@ -1,0 +1,16 @@
+.env
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.db
+*.db-shm
+*.db-wal
+.pytest_cache/
+.coverage
+htmlcov/
+node_modules/
+dist/
+build/
+android/.gradle/
+android/**/build/
