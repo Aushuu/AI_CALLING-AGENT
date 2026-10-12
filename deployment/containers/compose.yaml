@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ../..
+      dockerfile: deployment/containers/Dockerfile
+    container_name: call-agent-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - DATABASE_URL=postgresql+psycopg://callagent:agentsecret@postgres:5432/callagentdb
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID:-}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN:-}
+      - INBOUND_PHONE_NUMBER=${INBOUND_PHONE_NUMBER:-}
+      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-http://localhost:8000}
+      - FRONTEND_ORIGIN=${FRONTEND_ORIGIN:-http://localhost:5173}
+      - FRONTEND_ORIGINS=http://localhost:5173,http://localhost:8000
+      - AUTH_REQUIRED=${AUTH_REQUIRED:-false}
+      - APP_USERNAME=${APP_USERNAME:-owner}
+      - APP_PASSWORD=${APP_PASSWORD:-}
+      - APP_TOKEN_SECRET=${APP_TOKEN_SECRET:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - call-agent-net
+
+  frontend:
+    build:
+      context: ../../frontend
+      dockerfile: ../deployment/containers/Dockerfile.frontend
+    container_name: call-agent-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000
+    networks:
+      - call-agent-net
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: call-agent-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: callagent
+      POSTGRES_PASSWORD: agentsecret
+      POSTGRES_DB: callagentdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U callagent -d callagentdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - call-agent-net
+
+volumes:
+  pgdata:
+
+networks:
+  call-agent-net:
+    driver: bridge

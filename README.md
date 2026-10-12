@@ -1,88 +1,181 @@
-# Callroom: AI-Powered Personal Call Agent
+# AI-Powered Personal Call Agent (Problem Statement 01)
 
-Callroom is a browser-based call-screening prototype. Speak in the call sandbox, receive a spoken assistant response, and review caller identity, risk, handling/transfer recommendation, transcript, summary, and duration in the SQLite registry. It supports manual and scheduled agent modes, saved caller rules, user preferences, a private dashboard password, and a native dialer handoff.
+An intelligent, phone-first AI personal call assistant that acts as an intermediary between a user and incoming telephone calls. When the user is busy, unavailable, or in focus hours, the agent answers the call over the telephone network, conducts a natural voice interaction, identifies the caller, assesses intent and fraud risk, applies personalized rules, and decides whether to resolve the interaction autonomously or intelligently escalate to the user.
 
-The microphone conversation is a **voice simulator**, not a cellular call. The transfer link opens the device's native `tel:` dialer for an explicit user tap; placing that outgoing cellular call does not require internet, but carrier service and the device's normal call confirmation still apply. The prototype cannot answer, intercept, bridge, record, or access audio from an incoming cellular call. Android incoming-call screening requires the user to grant the platform's call-screening role, and Android does not expose cellular call audio to an ordinary app. Browser speech recognition requires microphone permission and a supported browser (current Chrome is recommended); the Web Speech service may send recognized audio to the browser vendor for processing.
+---
 
-## Stack
+## Capabilities Overview
 
-- Python 3.11+
-- Flask and Flask-Sock for HTTP and WebSocket transport
-- Google Generative AI SDK with Pydantic-validated JSON responses
-- SQLite for call history
-- SQLite-backed schedule, contacts, and caller-specific screening rules
-- IANA time-zone schedules (including overnight windows)
-- Device Contact Picker import where supported by the browser
-- Explicit native dialer handoff with `tel:` links
-- Browser Web Speech recognition and speech synthesis
-- Tailwind CSS CDN plus local responsive styles
+| Requirement | Implementation Details | Status |
+| :--- | :--- | :---: |
+| **Manual Agent Mode** | Instant toggle on dashboard to switch screening mode ON or OFF manually. | ✅ |
+| **Scheduled Agent Mode** | Automated time windows with day-of-week selection, timezone awareness, overnight shifts, and quick preset schedules (Work Hours, Night Shield, 24/7). | ✅ |
+| **Known & Unknown Callers** | Phone normalization against address book; treats unsaved numbers with cautious screening and communicates identity uncertainty. | ✅ |
+| **Contact Integration** | Integrates device contacts via browser Contacts Picker API, `.vcf` vCard file import, Android `ContactsContract` bridge, and iOS `CNContactStore` bridge. | ✅ |
+| **Voice Interaction** | Multi-turn telephone voice interaction via Twilio Programmable Voice (`<Gather input="speech">` + Gemini LLM / TwiML `<Say>`). Includes in-browser Live Voice Call Center with mic Speech-to-Text and Speech Synthesis. | ✅ |
+| **Caller Identification** | Identifies saved contacts and extracts self-declared caller identity and organization from caller speech; flags unverified numbers with explicit uncertainty tags. | ✅ |
+| **Spam / Fraud Screening** | Multi-class risk assessment (`low`, `spam`, `suspicious`, `possible_scam`). Deflects OTP/2FA theft, remote access scams (AnyDesk, TeamViewer), debt/arrest coercion, and robocalls. | ✅ |
+| **Context-Aware Screening** | Combines caller identity, conversation context, urgency levels, owner phone configuration, and active schedules before making routing decisions. | ✅ |
+| **Intelligent Transfer** | Escalate important or emergency calls and VIP contacts to the owner's cellular number. High-risk calls are blocked from transfer. Handles transfer fallback to message taking if unanswered. | ✅ |
+| **Agent Handling** | Resolves suitable calls autonomously without interrupting the owner (takes structured messages, answers delivery instructions, politely declines telemarketers). | ✅ |
+| **Personalized Rules** | Per-contact rules: `always_screen`, `always_message`, `always_transfer` (VIP), `delivery_agent` (doorstep instructions), and `block_reject` (polite decline). | ✅ |
+| **Native Cellular Calling** | Dedicated cellular calling interface using the device's native baseband dialer (`tel:` URI, Android `Intent.ACTION_CALL` / `ACTION_DIAL`, iOS `UIApplication.open`). **Zero internet required for cellular calls.** | ✅ |
 
-## Run locally
+---
 
-1. Install Python 3.11 or newer and create a virtual environment.
+## End-to-End Operational Flow
 
-	```powershell
-	py -3.11 -m venv .venv
-	.\.venv\Scripts\Activate.ps1
-	python -m pip install --upgrade pip
-	pip install -r requirements.txt
-	```
+```
+[ Incoming Call ]
+        │
+        ▼
+[ Caller Recognition ] ──► Normalized Phone matched against Contacts
+        │                   ├─ Known: Disclose matched contact (unverified CLI notice)
+        │                   └─ Unknown: Disclose AI assistant role & ask caller purpose
+        ▼
+[ Voice Conversation ] ──► Multi-turn speech gathering & natural spoken dialogue
+        │
+        ▼
+[ Judging Focus ]      ──► 1. Intent Detection (Emergency, Delivery, Appointment, Work, Sales)
+                           2. Spam/Fraud Risk Scoring (Low, Spam, Suspicious, Possible Scam)
+                           3. Identity Extraction & Uncertainty Flagging
+                           4. Contact Rule & User Schedule Application
+        │
+        ▼
+[ Handle / Transfer ]  ──► Decision:
+                           ├─ High Urgency / VIP (Low Risk) ──► Dial Owner Phone (Transfer)
+                           │                                      └─ Unanswered? ──► Take Message
+                           ├─ Delivery Carrier               ──► Provide Drop-off Instructions
+                           ├─ Spam / Robocall / Scam         ──► Deflect & Refuse Sensitive Data
+                           └─ Routine Inquiry                ──► Take Structured Message & Save Record
+```
 
-2. Copy `.env.example` to `.env`. Set `GEMINI_API_KEY` for Gemini responses. The application runs without a key using a deterministic demo fallback; the API key must never be placed in frontend code. Set `DASHBOARD_PASSWORD` to protect the local dashboard if it is reachable by other people.
+---
 
-	```powershell
-	Copy-Item .env.example .env
-	```
+## Repository Structure
 
-3. Start the development server.
+```
+├── backend/
+│   ├── app/
+│   │   ├── api/
+│   │   │   ├── routes.py            # REST API (health, settings, contacts, calls, demo)
+│   │   │   └── telephony.py         # Signed Twilio voice webhooks (/voice, /turn, /status)
+│   │   ├── services/
+│   │   │   ├── agent.py             # Availability logic, state machine & transfer dispatch
+│   │   │   ├── analysis.py          # Intent classification, fraud regex, caller identity inference
+│   │   │   ├── auth.py              # Owner JWT authentication & security
+│   │   │   ├── gemini.py            # Gemini 2.5 Flash conversational voice & risk classification
+│   │   │   └── push_notifications.py# Web Push notification service
+│   │   ├── database.py              # SQLAlchemy SQLite & PostgreSQL database adapter
+│   │   └── main.py                  # FastAPI application entrypoint
+│   ├── tests/
+│   │   └── test_analysis.py         # 40 comprehensive unit & integration tests
+│   ├── requirements.txt
+│   └── run_server.py
+├── frontend/
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── App.tsx              # Main dashboard with tabbed navigation
+│   │   │   └── routes.tsx           # Route definitions
+│   │   ├── components/
+│   │   │   ├── CallDecisionPanel.tsx# Judging focus visualizer (Intent, Risk, Confidence)
+│   │   │   └── SetupChecklist.tsx   # Carrier & Twilio setup progress checklist
+│   │   ├── features/
+│   │   │   ├── calls/
+│   │   │   │   ├── CallList.tsx     # Call history with risk filters & signals
+│   │   │   │   ├── CellularDialpad.tsx # Offline native cellular phone dialpad with DTMF tones
+│   │   │   │   └── DemoCallSimulator.tsx # Live Voice & Audio Call Simulator (Mic STT + TTS)
+│   │   │   ├── contacts/
+│   │   │   │   └── CallerProfile.tsx# Known contacts, personalized rules, vCard import
+│   │   │   ├── preferences/
+│   │   │   │   └── RuleEditor.tsx   # Manual mode toggle & fraud policy explanation
+│   │   │   └── schedules/
+│   │   │       └── AgentSchedule.tsx# Scheduled agent mode with presets & day selector
+│   │   ├── services/
+│   │   │   ├── apiClient.ts         # REST API client with JWT token management
+│   │   │   └── soundEffects.ts      # Web Audio API telephone ringtone, DTMF & Speech Synthesis
+│   │   └── types/call.ts            # TypeScript interfaces
+│   └── package.json
+├── mobile/
+│   ├── android/app/src/main/
+│   │   ├── AndroidManifest.xml      # Telephony permissions (CALL_PHONE, READ_CONTACTS)
+│   │   └── java/com/callagent/
+│   │       ├── NativeCallBridge.kt  # Android offline cellular dialer bridge (ACTION_CALL/DIAL)
+│   │       └── DeviceContactsBridge.kt # ContactsContract query bridge
+│   └── ios/CallAgent/
+│       ├── NativeCallBridge.swift   # iOS offline cellular dialer bridge (tel: URL scheme)
+│       └── DeviceContactsBridge.swift # CNContactStore address book bridge
+├── config/
+│   └── application.config.ts        # Central TypeScript application configuration
+├── deployment/
+│   ├── containers/
+│   │   ├── Dockerfile               # Multi-stage production container build
+│   │   ├── Dockerfile.frontend      # Development container
+│   │   └── compose.yaml             # Docker Compose full-stack specification
+│   └── infrastructure/
+│       └── deployment.yaml          # Kubernetes Deployment & Service manifests
+├── docs/
+│   ├── api/openapi.yaml             # OpenAPI 3.0 specification
+│   ├── architecture/system-overview.md # System architecture & Mermaid sequence diagrams
+│   └── security/privacy-and-safety.md  # Threat model, prompt injection defense & safety rules
+└── README.md
+```
 
-	```powershell
-	python app.py
-	```
+---
 
-4. Open `http://127.0.0.1:5000` in a supported browser, allow microphone access, enter a caller ID, and choose **Start call**. Use **End call** to save the conversation to `call_agent.db`.
-5. Under **Agent rules & schedule**, set the coverage days, time range and time zone, add your cellular number and screening preferences, then save. Add callers with an individual screen, transfer, or agent-handled rule. The device Contact Picker is optional and only imports contacts you select.
+## Quickstart & Local Development
 
-Scheduled mode activates the agent when its selected days and local-time interval match. The interval can span midnight. Manual mode stays active regardless of schedule; turning manual mode off leaves scheduled coverage enabled when its window is active.
+### 1. Backend Service
 
-For reliable microphone access outside localhost, serve the app over HTTPS. Call history is local to the server's SQLite file. Set `CALL_AGENT_DB_PATH` to choose another database location.
+```powershell
+cd backend
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+python run_server.py
+```
 
-Run the policy and persistence checks with `python -m unittest discover -s tests`.
+The FastAPI backend will start at `http://127.0.0.1:8000`.
 
-## Render deployment
+### 2. Frontend Dashboard
 
-The repository includes a no-card Render Blueprint in `render.yaml` using the free web-service plan, a health check, generated production secrets, and ephemeral SQLite storage. Create a Blueprint from the repository and provide `GEMINI_API_KEY` when prompted. After deployment, copy the generated `DASHBOARD_PASSWORD` into the team secret manager.
+```powershell
+cd frontend
+npm install
+npm run dev
+```
 
-1. In Render, choose **New → Blueprint** and select this repository on `main`. The Blueprint defines the Python build/start commands, health check, free plan, and generated dashboard/session secrets.
-2. Enter `GEMINI_API_KEY` directly in Render when prompted. Never commit `.env` or put a key in source control. Production startup fails closed if the dashboard password or unique session secret is missing.
-3. Deploy and save the generated `DASHBOARD_PASSWORD` in your team secret manager. Open the HTTPS service URL, sign in, and grant microphone access.
-4. Test `/api/health`, then configure a schedule and sample caller rules. Run a short browser call and confirm it appears in the registry.
+The React dashboard will start at `http://localhost:5173`.
 
-The free web service has an ephemeral filesystem: its `/tmp/call_agent.db` can be lost on redeploy, restart, or when Render spins the service down after inactivity. Free services may take about a minute to wake after idle. This is appropriate for a temporary hackathon demo, not durable call history. Persistent storage requires a paid disk or changing the app to use a managed database.
+### 3. Running Test Suite
 
-## HTTP and WebSocket interface
+```powershell
+cd backend
+.venv\Scripts\activate
+python -m unittest discover tests -v
+```
 
-- `GET /` serves the dashboard.
-- `GET /api/health` reports service/database readiness for Render.
-- `GET /api/logs` returns the latest call records.
-- `GET /api/agent` and `POST /api/agent` read or change manual mode and report effective scheduled/manual state.
-- `GET /api/settings` and `PUT /api/settings` read and update schedule, time zone, transfer number and user preferences.
-- `GET /api/contacts`, `POST /api/contacts` and `DELETE /api/contacts` manage known callers and per-caller rules.
-- `POST /api/save_call` validates and stores a call record; call IDs make retries idempotent.
-- `WS /ws/call` accepts `start`, `transcript`, and `end` JSON events, returns validated response, identity, risk, action and transfer metadata, and persists the call on end or unexpected disconnect.
+All 40 unit and integration tests will execute and validate the rules engine, database adapter, schedule calculation, caller identification, personalized contact rules, and Twilio webhooks.
 
-## Hackathon team handoff
+### 4. Production Build
 
-- UI: `templates/index.html`, `static/css/style.css`
-- API and persistence: `app.py`, `database.py`
-- Browser speech and WebSocket client: `static/js/app.js`
-- Gemini and response schema: `ai_agent.py`
-- Dependencies and deployment: `requirements.txt`, `.env.example`, this README
+```powershell
+cd frontend
+npm run build
+```
 
-## Notes
+---
 
-- Gemini model availability depends on the API project and can change over time. The server validates all model output and uses the offline fallback if credentials, provider access, or response validation fail.
-- The agent-active toggle is process-local. A single Render worker is configured for the prototype; multiple replicas require shared agent state and a shared production database.
-- Schedules and saved contacts are stored in SQLite and are consulted only when the simulator receives a caller ID; on Render's free ephemeral filesystem, they can be lost when the service restarts or spins down. Automatically handling a real incoming cellular call needs a separate native Android app, user-granted call-screening role, device/OEM validation, and supported telephony behavior. The simulator cannot bridge a screened caller to the transfer `tel:` call.
-- Model classifications and fallback keyword screening are recommendations, not verified identity or fraud determinations. The interface shows uncertainty and requires a deliberate user action for a transfer; do not use the prototype for emergency screening.
-- The dashboard password is a single shared owner credential, not individual user accounts. Use HTTPS, a strong password, and a unique secret key; there is no password reset or retention scheduler. Do not use the prototype for real personal calls.
+## Native Cellular Telephony & Carrier Integration
+
+1. **Native Cellular Dialing**:
+   - The dashboard includes a dedicated **Cellular Dialer** with DTMF audio touch tones.
+   - Dialing opens your phone's native phone dialer (`tel:<number>`) and initiates a cellular call through your mobile carrier SIM.
+   - **Internet connectivity is not required for the actual cellular call.**
+
+2. **Conditional Forwarding**:
+   - Dial these MMI codes on your phone to forward unanswered calls to the agent's carrier DID:
+     - `*67*<DID>#` (Forward when Busy / Call Rejected)
+     - `*61*<DID>#` (Forward when Unanswered / No Pick-up)
+     - `*62*<DID>#` (Forward when Unreachable / Out of Coverage)
+   - When you are unavailable, the carrier automatically forwards the live call to the agent.

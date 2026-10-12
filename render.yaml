@@ -1,25 +1,48 @@
 services:
   - type: web
-    name: callroom-personal-agent
-    runtime: python
+    name: calling-agent-api
+    env: python
     plan: free
-    region: oregon
+    rootDir: backend
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn --worker-class gthread --workers 1 --threads 100 --timeout 60 app:app
+    startCommand: python run_server.py
     healthCheckPath: /api/health
-    autoDeploy: true
     envVars:
-      - key: APP_ENV
-        value: production
-      - key: FLASK_DEBUG
-        value: "false"
-      - key: FLASK_SECRET_KEY
-        generateValue: true
-      - key: DASHBOARD_PASSWORD
-        generateValue: true
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: DATABASE_URL
+        sync: false
+      - key: AUTH_REQUIRED
+        value: "true"
+      - key: APP_USERNAME
+        sync: false
+      - key: APP_PASSWORD
+        sync: false
+      - key: APP_TOKEN_SECRET
+        sync: false
       - key: GEMINI_API_KEY
         sync: false
       - key: GEMINI_MODEL
-        value: gemini-1.5-pro
-      - key: CALL_AGENT_DB_PATH
-        value: /tmp/call_agent.db
+        value: gemini-2.5-flash
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: INBOUND_PHONE_NUMBER
+        sync: false
+      - key: PUBLIC_BASE_URL
+        value: https://calling-agent-api.onrender.com
+      - key: FRONTEND_ORIGIN
+        value: https://calling-agent-frontend.onrender.com
+      - key: FRONTEND_ORIGINS
+        value: https://calling-agent-frontend.onrender.com
+
+  - type: static
+    name: calling-agent-frontend
+    plan: free
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://calling-agent-api.onrender.com
