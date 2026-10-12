@@ -1,0 +1,187 @@
+openapi: 3.0.3
+info:
+  title: AI-Powered Personal Call Agent API
+  version: 2.0.0
+  description: >
+    API specification for the AI-Powered Personal Call Agent.
+    Handles telephone call interception, speech analysis, spam/fraud scoring,
+    personalized routing, intelligent transfer, and owner configuration.
+paths:
+  /api/health:
+    get:
+      summary: System health & integration status
+      responses:
+        '200':
+          description: Service readiness and integration state
+
+  /api/auth/login:
+    post:
+      summary: Owner authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Returns JWT access token
+
+  /api/settings:
+    get:
+      summary: Retrieve current screening settings and schedule
+      responses:
+        '200':
+          description: Current agent configuration
+    put:
+      summary: Update screening mode and schedule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                manual_enabled:
+                  type: boolean
+                schedule_enabled:
+                  type: boolean
+                schedule_days:
+                  type: array
+                  items:
+                    type: string
+                schedule_start:
+                  type: string
+                schedule_end:
+                  type: string
+                timezone:
+                  type: string
+                owner_phone:
+                  type: string
+
+  /api/contacts:
+    get:
+      summary: List saved contacts and personalized rules
+      responses:
+        '200':
+          description: List of contacts
+    post:
+      summary: Add or update a contact with custom rule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, phone, rule]
+              properties:
+                name:
+                  type: string
+                phone:
+                  type: string
+                rule:
+                  type: string
+                  enum: [always_screen, always_message, always_transfer, delivery_agent, block_reject]
+
+  /api/contacts/{contact_id}:
+    delete:
+      summary: Delete contact
+      parameters:
+        - name: contact_id
+          in: path
+          required: true
+          schema:
+            type: integer
+
+  /api/calls:
+    get:
+      summary: Retrieve call history records
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 30
+
+  /api/calls/simulate:
+    post:
+      summary: Run deterministic call screening simulation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [caller_phone, transcript]
+              properties:
+                caller_phone:
+                  type: string
+                transcript:
+                  type: string
+
+  /api/demo/calls:
+    post:
+      summary: Initiate an interactive demo call session
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                caller_name:
+                  type: string
+                caller_phone:
+                  type: string
+
+  /api/demo/calls/{session_id}/message:
+    post:
+      summary: Send next caller message turn in interactive demo
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message:
+                  type: string
+
+  /api/twilio/voice:
+    post:
+      summary: Inbound voice webhook (TwiML initial greeting)
+      responses:
+        '200':
+          description: TwiML Gather XML response
+
+  /api/twilio/turn:
+    post:
+      summary: Spoken turn webhook (processes caller speech)
+      responses:
+        '200':
+          description: TwiML response with AI voice reply or transfer
+
+  /api/twilio/transfer-complete:
+    post:
+      summary: Transfer recovery webhook when owner cannot be reached
+      responses:
+        '200':
+          description: TwiML Gather XML to take a message
+
+  /api/twilio/status:
+    post:
+      summary: Voice call lifecycle callback
+      responses:
+        '204':
+          description: Status recorded
