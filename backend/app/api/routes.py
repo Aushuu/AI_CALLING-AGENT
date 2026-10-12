@@ -230,7 +230,9 @@ def health() -> dict[str, object]:
     settings = get_settings()
     required_twilio_config = ("TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN")
     missing_twilio_config = [name for name in required_twilio_config if not os.getenv(name)]
-    inbound_phone_configured = bool(os.getenv("INBOUND_PHONE_NUMBER", "").strip())
+    inbound_phone_configured = bool(
+        (os.getenv("TWILIO_PHONE_NUMBER") or os.getenv("INBOUND_PHONE_NUMBER") or "").strip()
+    )
     if not inbound_phone_configured:
         missing_twilio_config.append(
             "INBOUND_PHONE_NUMBER (Twilio Voice number or carrier DID)"
