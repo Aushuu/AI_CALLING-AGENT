@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0b1017">
+    <meta name="description" content="A private browser-based personal call screening simulator.">
+    <title>Callroom | Personal Call Agent</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script defer src="{{ url_for('static', filename='js/app.js') }}"></script>
+  </head>
+  <body class="min-h-screen text-slate-100">
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="/" aria-label="Callroom dashboard">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M7.4 3.8 9 7.5 7.1 9.2c1.1 2.3 2.9 4.1 5.2 5.2l1.7-1.9 3.7 1.6-.4 3.6c-.1.7-.7 1.2-1.4 1.2C9.2 18.9 4.1 13.8 4.1 7.1c0-.7.5-1.3 1.2-1.4l2.1-.2Z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M14.2 4.5c2.8.5 4.8 2.6 5.3 5.3M14.5 7.6c1.1.2 1.8 1 2 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </span>
+          <span class="brand-copy"><strong>callroom</strong><small>PERSONAL CALL AGENT</small></span>
+        </a>
+        <div class="topbar-actions">
+          <span class="environment-label"><span class="environment-dot"></span> BROWSER SIMULATOR</span>
+          <div class="agent-control">
+            <div class="agent-status" id="agentStatus" data-active="true">
+              <span class="status-light"></span><span id="agentStatusText">Agent active</span>
+            </div>
+            <button class="toggle-button" id="agentToggle" type="button" aria-pressed="true" aria-label="Take the agent offline">
+              <span class="toggle-knob"></span>
+            </button>
+          </div>
+          <button class="logout-button" id="logoutButton" type="button" title="Sign out">Sign out</button>
+        </div>
+      </header>
+
+      <main class="main-content">
+        <section class="page-intro" aria-labelledby="pageTitle">
+          <div>
+            <p class="eyebrow">CALL SCREENING / LIVE CONSOLE</p>
+            <h1 id="pageTitle">Your calls, <span>handled thoughtfully.</span></h1>
+          </div>
+          <div class="intro-note"><span class="note-mark">01</span><span>VOICE SANDBOX<br>NO CELLULAR CALLS</span></div>
+        </section>
+
+        <div class="dashboard-grid">
+          <section class="panel sandbox-panel" aria-labelledby="sandboxTitle">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">INTERACTIVE SIMULATOR</p>
+                <h2 id="sandboxTitle">Call sandbox</h2>
+              </div>
+              <span class="live-chip" id="connectionBadge"><span class="live-dot"></span><span id="connectionText">READY</span></span>
+            </div>
+
+            <form class="caller-form" id="callForm">
+              <label for="callerId">CALLER ID</label>
+              <div class="caller-input-wrap">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 20a8 8 0 0 0-16 0M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                <input id="callerId" name="callerId" type="text" maxlength="80" autocomplete="off" placeholder="e.g. +1 555 0182" required>
+              </div>
+              <p class="field-hint">Use your microphone to simulate an incoming call.</p>
+              <div class="caller-tools">
+                <button class="text-button" id="importDeviceContacts" type="button">Import from device contacts</button>
+                <span class="caller-match" id="callerMatch">Caller not recognized</span>
+              </div>
+            </form>
+
+            <div class="conversation-head">
+              <span>CONVERSATION</span>
+              <span class="duration" id="callDuration">00:00</span>
+            </div>
+            <div class="message-feed" id="messageFeed" role="log" aria-live="polite" aria-relevant="additions text">
+              <div class="empty-conversation" id="conversationEmpty">
+                <span class="empty-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+                <p>Your conversation will appear here</p>
+                <span>Start a call to begin the voice sandbox</span>
+              </div>
+            </div>
+            <section class="decision-panel" id="decisionPanel" aria-live="polite" hidden>
+              <div class="decision-heading">
+                <div><span class="summary-label">SCREENING DECISION</span><strong id="decisionTitle">Agent handling</strong></div>
+                <span class="risk-chip" id="riskChip" data-risk="Low">LOW RISK</span>
+              </div>
+              <p class="decision-summary" id="decisionSummary"></p>
+              <p class="decision-reason" id="decisionReason"></p>
+              <a class="button button-transfer" id="transferCall" href="#" hidden>
+                <span>Transfer: open native dialer</span>
+              </a>
+              <span class="transfer-hint" id="transferHint" hidden>Add your number in Agent preferences to enable transfer.</span>
+            </section>
+            <div class="transcript-status" id="transcriptStatus" aria-live="polite">
+              <span class="status-pulse"></span><span id="transcriptStatusText">Microphone is idle</span>
+            </div>
+            <div class="call-actions">
+              <button class="button button-primary" id="startCall" type="button">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7.4 3.8 9 7.5 7.1 9.2c1.1 2.3 2.9 4.1 5.2 5.2l1.7-1.9 3.7 1.6-.4 3.6c-.1.7-.7 1.2-1.4 1.2C9.2 18.9 4.1 13.8 4.1 7.1c0-.7.5-1.3 1.2-1.4l2.1-.2Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span>Start call</span>
+              </button>
+              <button class="button button-end" id="endCall" type="button" disabled>
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4.8 14.2a12 12 0 0 1 14.4 0l-1.4 3.2-3.2-.6-.5-2.2a8 8 0 0 0-3.9 0l-.5 2.2-3.2.6-1.7-3.2Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span>End call</span>
+              </button>
+            </div>
+            <p class="browser-note" id="browserNote">Speech recognition works best in Chrome over localhost or HTTPS.</p>
+          </section>
+
+          <section class="panel registry-panel" aria-labelledby="registryTitle">
+            <div class="panel-heading registry-heading">
+              <div>
+                <p class="eyebrow">SCREENING HISTORY</p>
+                <h2 id="registryTitle">Call registry</h2>
+              </div>
+              <span class="record-count" id="recordCount">0 RECORDS</span>
+            </div>
+            <div class="registry-summary">
+              <div><span class="summary-label">RECENT ACTIVITY</span><span class="summary-value" id="registrySubtitle">Waiting for your first call</span></div>
+              <button class="refresh-button" id="refreshLogs" type="button" aria-label="Refresh call registry" title="Refresh call registry">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M5.6 9a7 7 0 0 1 11.7-2L20 9M4 15l2.7 2a7 7 0 0 0 11.7-2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+            </div>
+            <div class="registry-list" id="registryList" aria-live="polite">
+              <div class="registry-empty" id="registryEmpty">
+                <span class="registry-empty-icon" aria-hidden="true">—</span>
+                <strong>No calls screened yet</strong>
+                <span>Completed calls will be listed here.</span>
+              </div>
+            </div>
+            <div class="registry-footer"><span class="privacy-icon" aria-hidden="true">◈</span><span>Stored locally in this app's SQLite database</span></div>
+          </section>
+        </div>
+
+        <section class="panel preferences-panel" aria-labelledby="preferencesTitle">
+          <div class="panel-heading preferences-heading">
+            <div><p class="eyebrow">PERSONALIZATION</p><h2 id="preferencesTitle">Agent rules & schedule</h2></div>
+            <span class="preferences-save-state" id="preferencesSaveState" aria-live="polite">Settings loaded from this device</span>
+          </div>
+          <div class="preferences-grid">
+            <form class="settings-form" id="settingsForm">
+              <div class="settings-section-head"><strong>Scheduled agent mode</strong><span>Uses your local time zone</span></div>
+              <label class="check-row schedule-enable"><input id="scheduleEnabled" type="checkbox"><span>Enable scheduled coverage</span></label>
+              <fieldset class="day-picker">
+                <legend>ACTIVE DAYS</legend>
+                <div class="day-options">
+                  <label><input type="checkbox" name="scheduleDay" value="0"><span>Mon</span></label>
+                  <label><input type="checkbox" name="scheduleDay" value="1"><span>Tue</span></label>
+                  <label><input type="checkbox" name="scheduleDay" value="2"><span>Wed</span></label>
+                  <label><input type="checkbox" name="scheduleDay" value="3"><span>Thu</span></label>
+                  <label><input type="checkbox" name="scheduleDay" value="4"><span>Fri</span></label>
+                  <label><input type="checkbox" name="scheduleDay" value="5"><span>Sat</span></label>
+                  <label><input type="checkbox" name="scheduleDay" value="6"><span>Sun</span></label>
+                </div>
+              </fieldset>
+              <div class="time-grid">
+                <label>START<input id="scheduleStart" type="time" value="09:00" required></label>
+                <label>END<input id="scheduleEnd" type="time" value="17:00" required></label>
+              </div>
+              <label class="field-label" for="timeZone">TIME ZONE</label>
+              <input class="form-input" id="timeZone" type="text" maxlength="80" placeholder="America/Los_Angeles" required>
+              <label class="field-label" for="transferNumber">YOUR CELL NUMBER FOR TRANSFER</label>
+              <input class="form-input" id="transferNumber" type="tel" maxlength="40" autocomplete="tel" placeholder="+1 555 0100">
+              <label class="field-label" for="userPreferences">PERSONAL SCREENING PREFERENCES</label>
+              <textarea class="form-input preferences-textarea" id="userPreferences" maxlength="1200" placeholder="Example: Transfer urgent family matters; let delivery updates be handled by the agent."></textarea>
+              <button class="button button-primary save-settings-button" type="submit">Save agent settings</button>
+            </form>
+
+            <div class="contacts-section">
+              <div class="settings-section-head"><strong>Known callers</strong><span>Rules take precedence over model suggestions</span></div>
+              <form class="contact-form" id="contactForm">
+                <div class="contact-input-grid">
+                  <label>NAME<input class="form-input" id="contactName" maxlength="100" required placeholder="Contact name"></label>
+                  <label>PHONE<input class="form-input" id="contactPhone" type="tel" maxlength="40" required placeholder="+1 555 0100"></label>
+                </div>
+                <label class="field-label" for="contactRule">CALLER RULE</label>
+                <select class="form-input" id="contactRule">
+                  <option value="screen">Screen every call</option>
+                  <option value="always_transfer">Always transfer to me</option>
+                  <option value="always_handle">Let the agent handle it</option>
+                </select>
+                <label class="field-label" for="contactNotes">CONTEXT FOR THE AGENT</label>
+                <input class="form-input" id="contactNotes" maxlength="500" placeholder="Relationship or useful context">
+                <button class="button button-secondary" type="submit">Add or update caller</button>
+              </form>
+              <div class="contact-list" id="contactList" aria-live="polite">
+                <p class="contacts-empty" id="contactsEmpty">No saved callers yet.</p>
+              </div>
+              <p class="contacts-note">Device contact access is user-selected and browser-dependent; imported contacts are stored in this app's SQLite database.</p>
+            </div>
+          </div>
+        </section>
+        <footer class="page-footer"><span>CALLROOM <span class="footer-divider">/</span> HACKATHON PROTOTYPE</span><span>VOICE SANDBOX ONLY <span class="footer-divider">·</span> NOT CONNECTED TO CELLULAR NETWORKS</span></footer>
+      </main>
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </div>
+  </body>
+</html>

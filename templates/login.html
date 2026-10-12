@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0b1017">
+    <title>Sign in | Callroom</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script defer src="{{ url_for('static', filename='js/login.js') }}"></script>
+  </head>
+  <body class="login-page">
+    <main class="login-panel">
+      <a class="brand" href="/">
+        <span class="brand-mark" aria-hidden="true">C</span>
+        <span class="brand-copy"><strong>callroom</strong><small>PERSONAL CALL AGENT</small></span>
+      </a>
+      <p class="eyebrow">PRIVATE DASHBOARD</p>
+      <h1>Sign in to your call agent.</h1>
+      <p class="login-description">Call transcripts, caller details, and personal rules are private to this dashboard.</p>
+      <form id="loginForm">
+        <label class="field-label" for="loginPassword">DASHBOARD PASSWORD</label>
+        <input class="form-input" id="loginPassword" name="password" type="password" autocomplete="current-password" required autofocus>
+        <button class="button button-primary login-submit" type="submit">Sign in</button>
+        <p class="login-error" id="loginError" role="alert" hidden></p>
+      </form>
+    </main>
+  </body>
+</html>
